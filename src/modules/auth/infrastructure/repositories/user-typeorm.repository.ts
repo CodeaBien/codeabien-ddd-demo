@@ -28,6 +28,18 @@ export class TypeOrmUserRepository implements UserRepository {
 		return UserMapper.toDomain(userEntity);
 	}
 
+	async findUserById(userId: string): Promise<UserAggregate | null> {
+		const userEntity = await this.userEntityRepository.findOne({
+			where: { id: userId },
+		});
+
+		if (!userEntity) {
+			return null;
+		}
+
+		return UserMapper.toDomain(userEntity);
+	}
+
 	async registerNewUser(userAggregate: UserAggregate): Promise<UserAggregate> {
 		const persistenceData = UserMapper.toNewPersistence(userAggregate);
 		const newUserEntity = this.userEntityRepository.create(persistenceData);
