@@ -479,31 +479,6 @@ describe('Email Value Object', () => {
 });
 ```
 
-#### Test de Agregado
-
-```typescript
-describe('UserAggregate', () => {
-	it('should emit UserRegisteredEvent on creation', () => {
-		const user = UserAggregate.create('user@example.com', 'Password123!');
-		const events = user.getDomainEvents();
-
-		expect(events).toHaveLength(1);
-		expect(events[0]).toBeInstanceOf(UserRegisteredEvent);
-	});
-
-	it('should emit UserLoggedInEvent on login', () => {
-		const user = UserAggregate.create('user@example.com', 'Password123!');
-		user.clearDomainEvents(); // Limpiar eventos de creación
-
-		user.login('192.168.1.1', 'Mozilla/5.0...');
-		const events = user.getDomainEvents();
-
-		expect(events).toHaveLength(1);
-		expect(events[0]).toBeInstanceOf(UserLoggedInEvent);
-	});
-});
-```
-
 ## 📚 Conceptos DDD Implementados
 
 ### 1. **Agregados (Aggregates)**
@@ -620,20 +595,6 @@ pnpm run migration:revert
 - [NestJS](https://nestjs.com/) - Framework para Node.js
 - [Jest](https://jestjs.io/) - Framework de testing
 
-## 🤝 Contribuir
-
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
-
----
-
 **¡Happy Coding! 🚀**
 
-_Este proyecto es un ejemplo educativo de DDD aplicado. Úsalo como referencia para aprender y mejorar tus habilidades en arquitectura de software._
+_Codea simple Codea bien_
