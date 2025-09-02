@@ -2,7 +2,7 @@
 
 ## 📋 Descripción
 
-Este proyecto demuestra la implementación de **Domain-Driven Design (DDD) Lite** aplicado a un sistema de autenticación con `login` y `register`. Es una versión simplificada que mantiene los conceptos fundamentales de DDD sin la complejidad de los patrones avanzados.
+Este proyecto demuestra la implementación de **Domain-Driven Design (DDD) Lite** aplicado a un sistema de autenticación con `login`, `register` y consultas de usuario. Es una versión simplificada que mantiene los conceptos fundamentales de DDD sin la complejidad de los patrones avanzados.
 
 ## 🎯 Objetivos de Aprendizaje
 
@@ -13,11 +13,11 @@ Al estudiar este proyecto, aprenderás:
 - **Value Objects** básicos con validaciones
 - **Agregados** como unidades de consistencia
 - **Separación de responsabilidades** entre capas
-- **Command Pattern** básico
+- **Repository Pattern** con inyección de dependencias
 
 ## 🏛️ Arquitectura del Proyecto
 
-### Estructura de Capas Simplificada
+### Estructura de Capas Implementada
 
 ```
 src/modules/auth/
@@ -26,16 +26,13 @@ src/modules/auth/
 │   ├── value-objects/        # Value Objects (Email, Password)
 │   └── repositories/         # Interfaces de Repositorio
 ├── application/              # 🔄 Capa de Aplicación (Use Cases)
-│   ├── commands/            # Comandos (Register, Login)
-│   ├── queries/             # Consultas (FindUser)
-│   ├── query-handlers/      # Manejadores de Consultas
 │   ├── results/             # Resultados de Operaciones
 │   └── services/            # Servicios de Aplicación
 └── infrastructure/           # 🔧 Capa de Infraestructura (Technical Details)
     ├── controllers/         # Controladores REST
     ├── dto/                # DTOs de Request/Response
     ├── mappers/            # Mappers de Persistencia
-    └── repositories/       # Implementaciones de Repositorio
+    └── repositories/       # Implementaciones de Repositorio + Tokens
 ```
 
 ### Principios de Arquitectura
@@ -60,7 +57,7 @@ src/modules/auth/
 export class UserAggregate {
 	// Métodos de dominio
 	static create(email: string, password: string): UserAggregate;
-	static reconstituteFromPersistence(id: string, email: string, password: string): UserAggregate;
+	static reconstituteFromPersistence(id: number, email: string, password: string): UserAggregate;
 	verifyCredentials(candidatePassword: string): boolean;
 	getPasswordForPersistence(): string;
 }
@@ -71,6 +68,7 @@ export class UserAggregate {
 - ✅ **Inmutabilidad**: Una vez creado, no se puede modificar directamente
 - ✅ **Validaciones**: Encapsula reglas de negocio del usuario
 - ✅ **Consistencia**: Garantiza que el estado siempre sea válido
+- ✅ **ID numérico**: Usa ID de tipo `number` generado por TypeORM
 
 ### 2. **Value Objects Básicos**
 
@@ -105,12 +103,12 @@ console.log(password.verifyPassword('mypassword123')); // true
 ```typescript
 @Injectable()
 export class RegisterUserService {
-	async execute(command: RegisterUserCommand): Promise<UserRegistrationResult> {
+	async registerNewUser(email: string, password: string): Promise<UserRegistrationResult> {
 		// 1. Crear agregado con validaciones
-		const userAggregate = UserAggregate.create(command.email, command.password);
+		const userAggregate = UserAggregate.create(email, password);
 
 		// 2. Verificar unicidad
-		const existingUser = await this.userRepository.findUserByEmailAddress(command.email);
+		const existingUser = await this.userRepository.findUserByEmailAddress(email);
 		if (existingUser) {
 			throw new BadRequestException('Ya existe un usuario registrado con este email');
 		}
@@ -128,15 +126,15 @@ export class RegisterUserService {
 ```typescript
 @Injectable()
 export class AuthenticateUserService {
-	async execute(command: AuthenticateUserCommand): Promise<UserAuthenticationResult> {
+	async loginUser(email: string, password: string): Promise<UserAuthenticationResult> {
 		// 1. Buscar usuario
-		const userAggregate = await this.userRepository.findUserByEmailAddress(command.email);
+		const userAggregate = await this.userRepository.findUserByEmailAddress(email);
 		if (!userAggregate) {
 			throw new UnauthorizedException('Las credenciales proporcionadas no son válidas');
 		}
 
 		// 2. Verificar credenciales
-		if (!userAggregate.verifyCredentials(command.password)) {
+		if (!userAggregate.verifyCredentials(password)) {
 			throw new UnauthorizedException('Las credenciales proporcionadas no son válidas');
 		}
 
@@ -145,23 +143,58 @@ export class AuthenticateUserService {
 }
 ```
 
-### 4. **Consultas Básicas**
-
-#### Query Handlers
+#### Consultas de Usuario
 
 ```typescript
 @Injectable()
-export class FindUserByEmailHandler {
-	async execute(query: FindUserByEmailQuery): Promise<UserQueryResult> {
-		const user = await this.userRepository.findUserByEmailAddress(query.email);
-
+export class UserService {
+	async findByEmail(email: string): Promise<UserResponse> {
+		const user = await this.userRepository.findUserByEmailAddress(email);
 		if (!user) {
-			throw new NotFoundException(`Usuario no encontrado con el email: ${query.email}`);
+			throw new NotFoundException(`Usuario no encontrado con el email: ${email}`);
 		}
+		return { id: user.id, email: user.emailAddress };
+	}
 
-		return new UserQueryResult(user.id, user.emailAddress);
+	async findById(id: number): Promise<UserResponse> {
+		const user = await this.userRepository.findUserById(id);
+		if (!user) {
+			throw new NotFoundException(`Usuario no encontrado con el ID: ${id}`);
+		}
+		return { id: user.id, email: user.emailAddress };
 	}
 }
+```
+
+### 4. **Inyección de Dependencias**
+
+#### Token de Repositorio
+
+```typescript
+// En user-typeorm.repository.ts
+export const USER_REPOSITORY_TOKEN = 'USER_REPOSITORY_TOKEN';
+
+@Injectable()
+export class TypeOrmUserRepository implements UserRepository {
+	// Implementación del repositorio
+}
+```
+
+#### Configuración en el Módulo
+
+```typescript
+@Module({
+	providers: [
+		{
+			provide: USER_REPOSITORY_TOKEN,
+			useClass: TypeOrmUserRepository,
+		},
+		RegisterUserService,
+		AuthenticateUserService,
+		UserService,
+	],
+})
+export class AuthModule {}
 ```
 
 ## 🔄 Flujo de Datos Simplificado
@@ -171,11 +204,10 @@ export class FindUserByEmailHandler {
 ```mermaid
 graph TD
     A[POST /auth/register] --> B[AuthController]
-    B --> C[RegisterUserCommand]
-    C --> D[RegisterUserService]
-    D --> E[UserAggregate.create]
-    E --> F[UserRepository.registerNewUser]
-    F --> G[UserRegistrationResult]
+    B --> C[RegisterUserService]
+    C --> D[UserAggregate.create]
+    D --> E[UserRepository.registerNewUser]
+    E --> F[UserRegistrationResult]
 ```
 
 ### Login de Usuario
@@ -183,22 +215,30 @@ graph TD
 ```mermaid
 graph TD
     A[POST /auth/login] --> B[AuthController]
-    B --> C[AuthenticateUserCommand]
-    C --> D[AuthenticateUserService]
-    D --> E[UserRepository.findByEmail]
-    E --> F[UserAggregate.verifyCredentials]
-    F --> G[UserAuthenticationResult]
+    B --> C[AuthenticateUserService]
+    C --> D[UserRepository.findByEmail]
+    D --> E[UserAggregate.verifyCredentials]
+    E --> F[UserAuthenticationResult]
 ```
 
-### Consulta de Usuario
+### Consulta de Usuario por Email
 
 ```mermaid
 graph TD
     A[GET /auth/user/email/:email] --> B[AuthController]
-    B --> C[FindUserByEmailQuery]
-    C --> D[FindUserByEmailHandler]
-    D --> E[UserRepository.findByEmail]
-    E --> F[UserQueryResult]
+    B --> C[UserService]
+    C --> D[UserRepository.findByEmail]
+    D --> E[UserResponse]
+```
+
+### Consulta de Usuario por ID
+
+```mermaid
+graph TD
+    A[GET /auth/user/:id] --> B[AuthController]
+    B --> C[UserService]
+    C --> D[UserRepository.findById]
+    D --> E[UserResponse]
 ```
 
 ## 🚀 Cómo Usar el Proyecto
@@ -240,7 +280,7 @@ Content-Type: application/json
 
 ```json
 {
-	"userId": "uuid-del-usuario",
+	"userId": 1,
 	"email": "usuario@ejemplo.com"
 }
 ```
@@ -265,7 +305,7 @@ Content-Type: application/json
 
 ```json
 {
-	"userId": "uuid-del-usuario",
+	"userId": 1,
 	"email": "usuario@ejemplo.com"
 }
 ```
@@ -285,7 +325,7 @@ GET /auth/user/email/usuario@ejemplo.com
 
 ```json
 {
-	"id": "uuid-del-usuario",
+	"id": 1,
 	"email": "usuario@ejemplo.com"
 }
 ```
@@ -293,14 +333,14 @@ GET /auth/user/email/usuario@ejemplo.com
 #### 4. Consultar Usuario por ID
 
 ```bash
-GET /auth/user/uuid-del-usuario
+GET /auth/user/1
 ```
 
 **Respuesta:**
 
 ```json
 {
-	"id": "uuid-del-usuario",
+	"id": 1,
 	"email": "usuario@ejemplo.com"
 }
 ```
@@ -323,6 +363,7 @@ GET /auth/user/uuid-del-usuario
 
 - **RegisterUserService**: Orquesta el registro de usuarios
 - **AuthenticateUserService**: Maneja la autenticación
+- **UserService**: Maneja consultas de usuarios
 - **Separación de responsabilidades**: Cada servicio tiene un propósito específico
 
 ### 4. **Arquitectura por Capas**
@@ -331,17 +372,17 @@ GET /auth/user/uuid-del-usuario
 - **Application**: Orquesta los casos de uso
 - **Infrastructure**: Maneja detalles técnicos
 
-### 5. **Command Pattern**
-
-- **RegisterUserCommand**: Encapsula datos para registro
-- **AuthenticateUserCommand**: Encapsula datos para autenticación
-- **Queries**: Encapsulan datos para consultas
-
-### 6. **Repository Pattern**
+### 5. **Repository Pattern**
 
 - **UserRepository**: Interface que define contratos
 - **TypeOrmUserRepository**: Implementación específica de tecnología
 - **Desacoplamiento**: El dominio no depende de la infraestructura
+
+### 6. **Inyección de Dependencias**
+
+- **USER_REPOSITORY_TOKEN**: Token para inyección de dependencias
+- **Configuración en módulo**: Registro de providers en AuthModule
+- **Desacoplamiento**: Los servicios no conocen implementaciones concretas
 
 ## 🎓 Diferencias con DDD Completo
 
@@ -351,17 +392,18 @@ GET /auth/user/uuid-del-usuario
 2. **Value Objects simples**: Con validaciones básicas
 3. **Servicios de aplicación**: Orquestación de casos de uso
 4. **Separación por capas**: Domain, Application, Infrastructure
-5. **Command Pattern**: Encapsulación de datos
-6. **Repository Pattern**: Abstracción de persistencia
+5. **Repository Pattern**: Abstracción de persistencia
+6. **Inyección de dependencias**: Desacoplamiento de implementaciones
 
 ### ❌ **Lo que NO incluye (vs DDD Completo):**
 
 1. **Eventos de Dominio**: No hay comunicación asíncrona
 2. **Políticas de Dominio**: No hay reglas complejas encapsuladas
 3. **CQRS avanzado**: No hay separación completa de comandos/consultas
-4. **Error Handling expresivo**: Errores HTTP estándar
-5. **Event Sourcing**: No hay historial de eventos
-6. **Sagas/Process Managers**: No hay orquestación compleja
+4. **Command Pattern**: No hay encapsulación de comandos
+5. **Error Handling expresivo**: Errores HTTP estándar
+6. **Event Sourcing**: No hay historial de eventos
+7. **Sagas/Process Managers**: No hay orquestación compleja
 
 ## 🚀 Cuándo Usar DDD Lite
 
@@ -433,4 +475,4 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 
 **¡Happy Coding! 🚀**
 
-_Este proyecto es un ejemplo educativo de DDD Lite aplicado. Úsalo como punto de partida para aprender DDD sin la complejidad de los patrones avanzados._
+_Codea Simple, CodeaBien._
