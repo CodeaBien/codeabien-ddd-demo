@@ -1,3 +1,3 @@
 export class UserRegistrationResult {
-	constructor(public readonly userId: string, public readonly email: string) {}
+	constructor(public readonly userId: number, public readonly email: string) {}
 }

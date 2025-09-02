@@ -1,10 +1,7 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Inject, Param, Post, Req } from '@nestjs/common';
-import { AuthenticateUserCommand } from '../../application/commands/authenticate-user.command';
-import { RegisterUserCommand } from '../../application/commands/register-user.command';
-import { FindUserByEmailQuery, FindUserByIdQuery } from '../../application/queries';
-import type { QueryBus } from '../../application/query-bus/query-bus.interface';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseIntPipe, Post } from '@nestjs/common';
 import { AuthenticateUserService } from '../../application/services/login-user.service';
 import { RegisterUserService } from '../../application/services/register-user.service';
+import { UserService } from '../../application/services/user.service';
 import { AuthenticateUserRequestDto } from '../dto/requests/authenticate-user-request.dto';
 import { RegisterUserRequestDto } from '../dto/requests/register-user-request.dto';
 import type { AuthenticateUserResponseDto } from '../dto/responses/authenticate-user-response.dto';
@@ -15,15 +12,13 @@ export class AuthController {
 	constructor(
 		private readonly registerUserService: RegisterUserService,
 		private readonly authenticateUserService: AuthenticateUserService,
-		@Inject('QueryBus')
-		private readonly queryBus: QueryBus
+		private readonly userService: UserService
 	) {}
 
 	@Post('register')
 	@HttpCode(HttpStatus.CREATED)
 	async registerNewUser(@Body() request: RegisterUserRequestDto): Promise<RegisterUserResponseDto> {
-		const command = new RegisterUserCommand(request.email, request.password);
-		const result = await this.registerUserService.execute(command);
+		const result = await this.registerUserService.registerNewUser(request.email, request.password);
 
 		return {
 			userId: result.userId,
@@ -33,17 +28,8 @@ export class AuthController {
 
 	@Post('login')
 	@HttpCode(HttpStatus.OK)
-	async authenticateUser(
-		@Body() request: AuthenticateUserRequestDto,
-		@Req() req: { ip?: string; connection?: { remoteAddress?: string }; headers: { [key: string]: string } }
-	): Promise<AuthenticateUserResponseDto> {
-		const command = new AuthenticateUserCommand(request.email, request.password);
-
-		// Extraer información del request para el contexto de login
-		const ipAddress = req.ip || req.connection?.remoteAddress;
-		const userAgent = req.headers['user-agent'];
-
-		const result = await this.authenticateUserService.execute(command, ipAddress, userAgent);
+	async loginUser(@Body() request: AuthenticateUserRequestDto): Promise<AuthenticateUserResponseDto> {
+		const result = await this.authenticateUserService.loginUser(request.email, request.password);
 
 		return {
 			userId: result.userId,
@@ -53,13 +39,11 @@ export class AuthController {
 
 	@Get('user/email/:email')
 	async findUserByEmail(@Param('email') email: string) {
-		const query = new FindUserByEmailQuery(email);
-		return await this.queryBus.execute(query);
+		return await this.userService.findByEmail(email);
 	}
 
 	@Get('user/:id')
-	async findUserById(@Param('id') id: string) {
-		const query = new FindUserByIdQuery(id);
-		return await this.queryBus.execute(query);
+	async findUserById(@Param('id', ParseIntPipe) id: number) {
+		return await this.userService.findById(id);
 	}
 }

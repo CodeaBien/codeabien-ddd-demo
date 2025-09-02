@@ -3,8 +3,8 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 @Index('users_pkey', ['id'], { unique: true })
 @Entity('users')
 export class UserEntity {
-	@PrimaryGeneratedColumn('uuid')
-	id: string;
+	@PrimaryGeneratedColumn({ type: 'integer', name: 'id' })
+	id: number;
 
 	@Column({ type: 'varchar', length: 255, nullable: false })
 	email: string;

@@ -1,4 +1,4 @@
 export interface AuthenticateUserResponseDto {
-	userId: string;
+	userId: number;
 	email: string;
 }

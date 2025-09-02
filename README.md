@@ -1,287 +1,170 @@
-# 🏗️ Proyecto DDD - Autenticación Avanzada
+# 🏗️ Proyecto DDD Lite - Autenticación
 
 ## 📋 Descripción
 
-Este proyecto demuestra la implementación de **Domain-Driven Design (DDD)** aplicado a un sistema de autenticación con `login` y `register`. Aunque las funcionalidades son simples, el proyecto aplica conceptos avanzados de DDD y arquitectura hexagonal para crear un ejemplo didáctico pero robusto.
+Este proyecto demuestra la implementación de **Domain-Driven Design (DDD) Lite** aplicado a un sistema de autenticación con `login` y `register`. Es una versión simplificada que mantiene los conceptos fundamentales de DDD sin la complejidad de los patrones avanzados.
 
 ## 🎯 Objetivos de Aprendizaje
 
 Al estudiar este proyecto, aprenderás:
 
-- **Domain-Driven Design (DDD)** en la práctica
-- **Arquitectura Hexagonal** (Ports & Adapters)
-- **Eventos de Dominio** y manejo de side-effects
-- **Value Objects** ricos con comportamiento
-- **Políticas de Dominio** y reglas de negocio
-- **CQRS básico** (Command Query Responsibility Segregation)
-- **Error Handling** expresivo del dominio
-- **Inyección de Dependencias** y desacoplamiento
+- **Domain-Driven Design (DDD)** en su forma más básica
+- **Arquitectura por Capas** (Domain, Application, Infrastructure)
+- **Value Objects** básicos con validaciones
+- **Agregados** como unidades de consistencia
+- **Separación de responsabilidades** entre capas
+- **Command Pattern** básico
 
 ## 🏛️ Arquitectura del Proyecto
 
-### Estructura de Capas
+### Estructura de Capas Simplificada
 
 ```
 src/modules/auth/
 ├── domain/                    # 🧠 Capa de Dominio (Core Business Logic)
 │   ├── aggregates/           # Agregados (UserAggregate)
 │   ├── value-objects/        # Value Objects (Email, Password)
-│   ├── events/              # Eventos de Dominio
-│   ├── policies/            # Políticas de Dominio
-│   ├── errors/              # Errores de Dominio
-│   └── repositories/        # Interfaces de Repositorio
+│   └── repositories/         # Interfaces de Repositorio
 ├── application/              # 🔄 Capa de Aplicación (Use Cases)
 │   ├── commands/            # Comandos (Register, Login)
 │   ├── queries/             # Consultas (FindUser)
-│   ├── services/            # Servicios de Aplicación
-│   ├── event-handlers/      # Manejadores de Eventos
 │   ├── query-handlers/      # Manejadores de Consultas
-│   └── query-bus/           # Bus de Consultas
+│   ├── results/             # Resultados de Operaciones
+│   └── services/            # Servicios de Aplicación
 └── infrastructure/           # 🔧 Capa de Infraestructura (Technical Details)
     ├── controllers/         # Controladores REST
-    ├── repositories/        # Implementaciones de Repositorio
-    ├── events/             # Dispatcher de Eventos
-    └── mappers/            # Mappers de Persistencia
+    ├── dto/                # DTOs de Request/Response
+    ├── mappers/            # Mappers de Persistencia
+    └── repositories/       # Implementaciones de Repositorio
 ```
 
 ### Principios de Arquitectura
 
-#### 1. **Arquitectura Hexagonal (Ports & Adapters)**
+#### 1. **Arquitectura por Capas**
 
-- **Puertos (Interfaces)**: Definen contratos sin implementación
-- **Adaptadores**: Implementan los puertos para tecnologías específicas
-- **Desacoplamiento**: El dominio no depende de la infraestructura
+- **Dominio**: Contiene la lógica de negocio pura
+- **Aplicación**: Orquesta los casos de uso
+- **Infraestructura**: Maneja detalles técnicos
 
-#### 2. **Domain-Driven Design (DDD)**
+#### 2. **Domain-Driven Design Lite**
 
-- **Agregados**: Unidades de consistencia y transacción
-- **Value Objects**: Objetos inmutables con comportamiento
-- **Eventos de Dominio**: Comunicación desacoplada entre contextos
-- **Políticas**: Reglas de negocio encapsuladas
+- **Agregados**: Unidades de consistencia básicas
+- **Value Objects**: Objetos inmutables con validaciones simples
+- **Separación de responsabilidades**: Cada capa tiene su propósito específico
 
 ## 🧩 Componentes Principales
 
 ### 1. **Agregado de Usuario** (`UserAggregate`)
 
 ```typescript
-// Representa la unidad de consistencia para usuarios
 export class UserAggregate {
 	// Métodos de dominio
 	static create(email: string, password: string): UserAggregate;
+	static reconstituteFromPersistence(id: string, email: string, password: string): UserAggregate;
 	verifyCredentials(candidatePassword: string): boolean;
-	login(ipAddress?: string, userAgent?: string): void;
-
-	// Gestión de eventos
-	getDomainEvents(): DomainEvent[];
-	clearDomainEvents(): void;
+	getPasswordForPersistence(): string;
 }
 ```
 
 **Características:**
 
 - ✅ **Inmutabilidad**: Una vez creado, no se puede modificar directamente
-- ✅ **Eventos de Dominio**: Emite eventos cuando ocurren cambios importantes
 - ✅ **Validaciones**: Encapsula reglas de negocio del usuario
 - ✅ **Consistencia**: Garantiza que el estado siempre sea válido
 
-### 2. **Value Objects Ricos**
+### 2. **Value Objects Básicos**
 
 #### Email Value Object
 
 ```typescript
 const email = new Email('user@example.com');
-console.log(email.isTemporaryEmail()); // false
-console.log(email.isFromKnownProvider()); // true
-console.log(email.domain); // "example.com"
+console.log(email.value); // "user@example.com"
 ```
 
 **Validaciones implementadas:**
 
-- ✅ **Formato RFC**: Cumple con estándares RFC 5321
-- ✅ **Longitud**: Máximo 254 caracteres
-- ✅ **Caracteres peligrosos**: Previene inyección
-- ✅ **Emails temporales**: Detecta servicios como 10minutemail
-- ✅ **Proveedores conocidos**: Identifica Gmail, Yahoo, etc.
+- ✅ **Formato básico**: Validación de formato de email
+- ✅ **Normalización**: Convierte a minúsculas y elimina espacios
 
 #### Password Value Object
 
 ```typescript
-const password = new Password('MyStr0ng!Pass123');
-console.log(password.strength); // PasswordStrength.STRONG
-console.log(password.isStrongEnough(PasswordStrength.MEDIUM)); // true
+const password = new Password('mypassword123');
+console.log(password.verifyPassword('mypassword123')); // true
 ```
 
 **Validaciones implementadas:**
 
-- ✅ **Longitud**: Mínimo 8, máximo 128 caracteres
-- ✅ **Caracteres requeridos**: Mayúsculas, minúsculas, números
-- ✅ **Patrones comunes**: Detecta contraseñas débiles
-- ✅ **Análisis de fortaleza**: WEAK, MEDIUM, STRONG, VERY_STRONG
+- ✅ **Longitud mínima**: Mínimo 6 caracteres
+- ✅ **Verificación**: Método para verificar contraseñas
 
-### 3. **Eventos de Dominio**
+### 3. **Servicios de Aplicación**
 
-#### Eventos Implementados
-
-```typescript
-// Se emite cuando un usuario se registra
-class UserRegisteredEvent {
-	constructor(readonly aggregateId: string, readonly email: string, readonly registeredAt: Date) {}
-}
-
-// Se emite cuando un usuario inicia sesión
-class UserLoggedInEvent {
-	constructor(
-		readonly aggregateId: string,
-		readonly email: string,
-		readonly loginAt: Date,
-		readonly ipAddress?: string,
-		readonly userAgent?: string
-	) {}
-}
-```
-
-#### Event Handlers
+#### Registro de Usuario
 
 ```typescript
 @Injectable()
-export class UserRegisteredHandler {
-	async handle(event: UserRegisteredEvent): Promise<void> {
-		// Side-effects del registro
-		await this.sendWelcomeEmail(event.email);
-		await this.createUserProfile(event.aggregateId);
-		await this.trackUserRegistration(event);
+export class RegisterUserService {
+	async execute(command: RegisterUserCommand): Promise<UserRegistrationResult> {
+		// 1. Crear agregado con validaciones
+		const userAggregate = UserAggregate.create(command.email, command.password);
+
+		// 2. Verificar unicidad
+		const existingUser = await this.userRepository.findUserByEmailAddress(command.email);
+		if (existingUser) {
+			throw new BadRequestException('Ya existe un usuario registrado con este email');
+		}
+
+		// 3. Persistir usuario
+		const registeredUser = await this.userRepository.registerNewUser(userAggregate);
+
+		return new UserRegistrationResult(registeredUser.id, registeredUser.emailAddress);
 	}
 }
 ```
 
-**Beneficios:**
-
-- ✅ **Desacoplamiento**: Los side-effects no afectan la lógica principal
-- ✅ **Escalabilidad**: Fácil agregar nuevos handlers
-- ✅ **Auditabilidad**: Registro completo de eventos
-- ✅ **Integración**: Comunicación con otros sistemas
-
-### 4. **Políticas de Dominio**
-
-```typescript
-// Política estándar
-export class StandardUserRegistrationPolicy {
-	validateRegistrationContext(email: Email, password: Password): void {
-		this.validateEmail(email); // No emails temporales
-		this.validatePassword(password); // Fortaleza MEDIUM
-		this.validateNoEmailInPassword(password, email); // Seguridad
-	}
-}
-
-// Política estricta
-export class StrictUserRegistrationPolicy {
-	validateRegistrationContext(email: Email, password: Password): void {
-		this.validateEmail(email); // Solo proveedores conocidos
-		this.validatePassword(password); // Fortaleza STRONG
-		this.validateNoEmailInPassword(password, email);
-		this.validateMinLength(password, 12); // Mínimo 12 caracteres
-	}
-}
-```
-
-**Características:**
-
-- ✅ **Configurabilidad**: Diferentes políticas según contexto
-- ✅ **Reutilización**: Misma interfaz, diferentes implementaciones
-- ✅ **Testabilidad**: Fácil de probar independientemente
-- ✅ **Mantenibilidad**: Cambios de política sin afectar lógica
-
-### 5. **CQRS Básico**
-
-#### Separación de Comandos y Consultas
-
-**Comandos** (Modifican estado):
-
-```typescript
-// Registro de usuario
-class RegisterUserCommand {
-	constructor(public readonly email: string, public readonly password: string) {}
-}
-
-// Autenticación de usuario
-class AuthenticateUserCommand {
-	constructor(public readonly email: string, public readonly password: string) {}
-}
-```
-
-**Consultas** (Solo leen):
-
-```typescript
-// Buscar usuario por email
-class FindUserByEmailQuery {
-	constructor(public readonly email: string) {}
-}
-
-// Buscar usuario por ID
-class FindUserByIdQuery {
-	constructor(public readonly userId: string) {}
-}
-```
-
-#### Query Bus
+#### Autenticación de Usuario
 
 ```typescript
 @Injectable()
-export class QueryBusService {
-	async execute<T>(query: any): Promise<T> {
-		if (query instanceof FindUserByEmailQuery) {
-			return this.findUserByEmailHandler.execute(query);
+export class AuthenticateUserService {
+	async execute(command: AuthenticateUserCommand): Promise<UserAuthenticationResult> {
+		// 1. Buscar usuario
+		const userAggregate = await this.userRepository.findUserByEmailAddress(command.email);
+		if (!userAggregate) {
+			throw new UnauthorizedException('Las credenciales proporcionadas no son válidas');
 		}
-		if (query instanceof FindUserByIdQuery) {
-			return this.findUserByIdHandler.execute(query);
+
+		// 2. Verificar credenciales
+		if (!userAggregate.verifyCredentials(command.password)) {
+			throw new UnauthorizedException('Las credenciales proporcionadas no son válidas');
 		}
-		throw new Error(`No handler found for query: ${query.constructor.name}`);
+
+		return new UserAuthenticationResult(userAggregate.id, userAggregate.emailAddress);
 	}
 }
 ```
 
-**Beneficios:**
+### 4. **Consultas Básicas**
 
-- ✅ **Separación clara**: Comandos vs Consultas
-- ✅ **Optimización**: Consultas optimizadas independientemente
-- ✅ **Escalabilidad**: Fácil agregar nuevas consultas
-- ✅ **Mantenibilidad**: Lógica separada y enfocada
-
-### 6. **Error Handling Expresivo**
+#### Query Handlers
 
 ```typescript
-// Errores específicos del dominio
-export class InvalidEmailError extends Error {
-	constructor(email: string, reason?: string) {
-		const message = reason ? `Email inválido: ${email}. Razón: ${reason}` : `Email inválido: ${email}`;
-		super(message);
-		this.name = 'InvalidEmailError';
-	}
-}
+@Injectable()
+export class FindUserByEmailHandler {
+	async execute(query: FindUserByEmailQuery): Promise<UserQueryResult> {
+		const user = await this.userRepository.findUserByEmailAddress(query.email);
 
-export class WeakPasswordError extends Error {
-	constructor(reason: string) {
-		super(`Contraseña débil: ${reason}`);
-		this.name = 'WeakPasswordError';
-	}
-}
+		if (!user) {
+			throw new NotFoundException(`Usuario no encontrado con el email: ${query.email}`);
+		}
 
-export class UserAlreadyExistsError extends Error {
-	constructor(email: string) {
-		super(`Ya existe un usuario registrado con el email: ${email}`);
-		this.name = 'UserAlreadyExistsError';
+		return new UserQueryResult(user.id, user.emailAddress);
 	}
 }
 ```
 
-**Características:**
-
-- ✅ **Específicos**: Cada error tiene su propio tipo
-- ✅ **Contexto rico**: Información detallada sobre la causa
-- ✅ **Mapeo HTTP**: Conversión automática a códigos HTTP
-- ✅ **Mantenibilidad**: Fácil identificar y manejar errores
-
-## 🔄 Flujo de Datos
+## 🔄 Flujo de Datos Simplificado
 
 ### Registro de Usuario
 
@@ -290,14 +173,9 @@ graph TD
     A[POST /auth/register] --> B[AuthController]
     B --> C[RegisterUserCommand]
     C --> D[RegisterUserService]
-    D --> E[Email & Password VOs]
-    E --> F[UserRegistrationPolicy]
-    F --> G[UserAggregate.create]
-    G --> H[UserRegisteredEvent]
-    H --> I[UserRepository]
-    I --> J[DomainEventDispatcher]
-    J --> K[UserRegisteredHandler]
-    K --> L[Side Effects]
+    D --> E[UserAggregate.create]
+    E --> F[UserRepository.registerNewUser]
+    F --> G[UserRegistrationResult]
 ```
 
 ### Login de Usuario
@@ -307,14 +185,9 @@ graph TD
     A[POST /auth/login] --> B[AuthController]
     B --> C[AuthenticateUserCommand]
     C --> D[AuthenticateUserService]
-    D --> E[Email VO Validation]
-    E --> F[UserRepository.findByEmail]
-    F --> G[UserAggregate.verifyCredentials]
-    G --> H[UserAggregate.login]
-    H --> I[UserLoggedInEvent]
-    I --> J[DomainEventDispatcher]
-    J --> K[UserLoggedInHandler]
-    K --> L[Side Effects]
+    D --> E[UserRepository.findByEmail]
+    E --> F[UserAggregate.verifyCredentials]
+    F --> G[UserAuthenticationResult]
 ```
 
 ### Consulta de Usuario
@@ -323,10 +196,9 @@ graph TD
 graph TD
     A[GET /auth/user/email/:email] --> B[AuthController]
     B --> C[FindUserByEmailQuery]
-    C --> D[QueryBus]
-    D --> E[FindUserByEmailHandler]
-    E --> F[UserRepository.findByEmail]
-    F --> G[UserQueryResult]
+    C --> D[FindUserByEmailHandler]
+    D --> E[UserRepository.findByEmail]
+    E --> F[UserQueryResult]
 ```
 
 ## 🚀 Cómo Usar el Proyecto
@@ -346,9 +218,6 @@ pnpm install
 # Configurar variables de entorno
 cp .env.example .env.local
 
-# Ejecutar migraciones
-pnpm run migration:run
-
 # Iniciar en modo desarrollo
 pnpm run dev
 ```
@@ -363,7 +232,7 @@ Content-Type: application/json
 
 {
   "email": "usuario@ejemplo.com",
-  "password": "MiContraseña123!"
+  "password": "mipassword123"
 }
 ```
 
@@ -379,7 +248,6 @@ Content-Type: application/json
 **Errores posibles:**
 
 - `400 Bad Request`: Email inválido, contraseña débil, usuario ya existe
-- `400 Bad Request`: Email temporal no permitido
 
 #### 2. Login de Usuario
 
@@ -389,7 +257,7 @@ Content-Type: application/json
 
 {
   "email": "usuario@ejemplo.com",
-  "password": "MiContraseña123!"
+  "password": "mipassword123"
 }
 ```
 
@@ -422,8 +290,6 @@ GET /auth/user/email/usuario@ejemplo.com
 }
 ```
 
-> **Nota**: El campo `createdAt` se genera dinámicamente ya que no está almacenado en la base de datos.
-
 #### 4. Consultar Usuario por ID
 
 ```bash
@@ -439,142 +305,79 @@ GET /auth/user/uuid-del-usuario
 }
 ```
 
-> **Nota**: El campo `createdAt` se genera dinámicamente ya que no está almacenado en la base de datos.
-
-## 🧪 Testing
-
-### Ejecutar Tests
-
-```bash
-# Tests unitarios
-pnpm run test
-
-# Tests con coverage
-pnpm run test:cov
-
-# Tests e2e
-pnpm run test:e2e
-```
-
-### Ejemplos de Tests
-
-#### Test de Value Object
-
-```typescript
-describe('Email Value Object', () => {
-	it('should create valid email', () => {
-		const email = new Email('user@example.com');
-		expect(email.value).toBe('user@example.com');
-		expect(email.domain).toBe('example.com');
-	});
-
-	it('should reject invalid email', () => {
-		expect(() => new Email('invalid-email')).toThrow(InvalidEmailError);
-	});
-
-	it('should detect temporary emails', () => {
-		const email = new Email('test@10minutemail.com');
-		expect(email.isTemporaryEmail()).toBe(true);
-	});
-});
-```
-
-#### Test de Agregado
-
-```typescript
-describe('UserAggregate', () => {
-	it('should emit UserRegisteredEvent on creation', () => {
-		const user = UserAggregate.create('user@example.com', 'Password123!');
-		const events = user.getDomainEvents();
-
-		expect(events).toHaveLength(1);
-		expect(events[0]).toBeInstanceOf(UserRegisteredEvent);
-	});
-
-	it('should emit UserLoggedInEvent on login', () => {
-		const user = UserAggregate.create('user@example.com', 'Password123!');
-		user.clearDomainEvents(); // Limpiar eventos de creación
-
-		user.login('192.168.1.1', 'Mozilla/5.0...');
-		const events = user.getDomainEvents();
-
-		expect(events).toHaveLength(1);
-		expect(events[0]).toBeInstanceOf(UserLoggedInEvent);
-	});
-});
-```
-
-## 📚 Conceptos DDD Implementados
+## 📚 Conceptos DDD Lite Implementados
 
 ### 1. **Agregados (Aggregates)**
 
 - **UserAggregate**: Unidad de consistencia para usuarios
 - **Invariantes**: Garantiza que el estado siempre sea válido
-- **Eventos**: Emite eventos cuando ocurren cambios importantes
+- **Factory Methods**: Métodos estáticos para creación
 
 ### 2. **Value Objects**
 
-- **Email**: Objeto inmutable con validaciones y comportamiento
-- **Password**: Análisis de fortaleza y validaciones de seguridad
+- **Email**: Objeto inmutable con validaciones básicas
+- **Password**: Validaciones de seguridad simples
 - **Inmutabilidad**: No se pueden modificar una vez creados
 
-### 3. **Eventos de Dominio**
+### 3. **Servicios de Aplicación**
 
-- **UserRegisteredEvent**: Se emite al registrar un usuario
-- **UserLoggedInEvent**: Se emite al hacer login
-- **Handlers**: Procesan side-effects de manera desacoplada
+- **RegisterUserService**: Orquesta el registro de usuarios
+- **AuthenticateUserService**: Maneja la autenticación
+- **Separación de responsabilidades**: Cada servicio tiene un propósito específico
 
-### 4. **Políticas de Dominio**
+### 4. **Arquitectura por Capas**
 
-- **UserRegistrationPolicy**: Encapsula reglas de negocio
-- **Configurabilidad**: Diferentes políticas según contexto
-- **Reutilización**: Misma interfaz, diferentes implementaciones
+- **Domain**: Contiene la lógica de negocio pura
+- **Application**: Orquesta los casos de uso
+- **Infrastructure**: Maneja detalles técnicos
 
-### 5. **CQRS Básico**
+### 5. **Command Pattern**
 
-- **Comandos**: Modifican el estado del sistema
-- **Consultas**: Solo leen información
-- **Separación**: Lógica independiente para cada responsabilidad
+- **RegisterUserCommand**: Encapsula datos para registro
+- **AuthenticateUserCommand**: Encapsula datos para autenticación
+- **Queries**: Encapsulan datos para consultas
 
-### 6. **Arquitectura Hexagonal**
+### 6. **Repository Pattern**
 
-- **Puertos**: Interfaces que definen contratos
-- **Adaptadores**: Implementaciones específicas de tecnología
+- **UserRepository**: Interface que define contratos
+- **TypeOrmUserRepository**: Implementación específica de tecnología
 - **Desacoplamiento**: El dominio no depende de la infraestructura
 
-### 7. **Error Handling**
+## 🎓 Diferencias con DDD Completo
 
-- **Errores específicos**: Cada tipo de error tiene su clase
-- **Contexto rico**: Información detallada sobre la causa
-- **Mapeo HTTP**: Conversión automática a códigos de respuesta
+### ✅ **Lo que SÍ incluye DDD Lite:**
 
-### 8. **Inyección de Dependencias**
+1. **Agregados básicos**: Unidades de consistencia
+2. **Value Objects simples**: Con validaciones básicas
+3. **Servicios de aplicación**: Orquestación de casos de uso
+4. **Separación por capas**: Domain, Application, Infrastructure
+5. **Command Pattern**: Encapsulación de datos
+6. **Repository Pattern**: Abstracción de persistencia
 
-- **Desacoplamiento**: Dependencias inyectadas, no instanciadas
-- **Testabilidad**: Fácil mockear dependencias en tests
-- **Configurabilidad**: Diferentes implementaciones según contexto
+### ❌ **Lo que NO incluye (vs DDD Completo):**
 
-## 🎓 Lecciones Aprendidas
+1. **Eventos de Dominio**: No hay comunicación asíncrona
+2. **Políticas de Dominio**: No hay reglas complejas encapsuladas
+3. **CQRS avanzado**: No hay separación completa de comandos/consultas
+4. **Error Handling expresivo**: Errores HTTP estándar
+5. **Event Sourcing**: No hay historial de eventos
+6. **Sagas/Process Managers**: No hay orquestación compleja
 
-### ✅ **Beneficios de DDD**
+## 🚀 Cuándo Usar DDD Lite
 
-1. **Código expresivo**: El código refleja el lenguaje del negocio
-2. **Mantenibilidad**: Cambios localizados y predecibles
-3. **Testabilidad**: Componentes independientes y fáciles de probar
-4. **Escalabilidad**: Arquitectura preparada para crecer
+### ✅ **Ideal para:**
 
-### ⚠️ **Consideraciones**
+- **Proyectos pequeños a medianos**: Donde DDD completo sería over-engineering
+- **Equipos nuevos en DDD**: Como introducción a los conceptos
+- **Dominios simples**: Con pocas reglas de negocio complejas
+- **Prototipado rápido**: Cuando necesitas estructura pero rapidez
 
-1. **Complejidad inicial**: Más código para casos simples
-2. **Curva de aprendizaje**: Requiere entender conceptos DDD
-3. **Over-engineering**: No siempre necesario para proyectos pequeños
+### ⚠️ **No recomendado para:**
 
-### 🚀 **Cuándo Usar DDD**
-
-- ✅ **Dominio complejo**: Reglas de negocio complejas
-- ✅ **Equipo grande**: Múltiples desarrolladores
-- ✅ **Largo plazo**: Proyectos que evolucionan
-- ✅ **Integración**: Múltiples sistemas
+- **Dominios muy complejos**: Con muchas reglas de negocio intrincadas
+- **Sistemas distribuidos**: Que requieren comunicación asíncrona
+- **Equipos grandes**: Donde la coordinación es crítica
+- **Long-running processes**: Que requieren orquestación compleja
 
 ## 🔧 Comandos Útiles
 
@@ -593,26 +396,20 @@ pnpm run test:e2e         # Tests end-to-end
 # Linting
 pnpm run lint             # Ejecutar linter
 pnpm run format           # Formatear código
-
-# Base de datos
-pnpm run migration:generate --name=MigrationName
-pnpm run migration:run
-pnpm run migration:revert
 ```
 
 ## 📖 Recursos Adicionales
 
 ### Libros Recomendados
 
-- **"Domain-Driven Design"** - Eric Evans
+- **"Domain-Driven Design"** - Eric Evans (para entender los conceptos completos)
 - **"Implementing Domain-Driven Design"** - Vaughn Vernon
 - **"Clean Architecture"** - Robert C. Martin
 
 ### Artículos
 
 - [Domain-Driven Design Reference](https://domainlanguage.com/ddd/reference/)
-- [Hexagonal Architecture](https://alistair.cockburn.us/hexagonal-architecture/)
-- [CQRS Pattern](https://docs.microsoft.com/en-us/azure/architecture/patterns/cqrs)
+- [DDD Lite vs DDD](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 
 ### Herramientas
 
@@ -636,4 +433,4 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 
 **¡Happy Coding! 🚀**
 
-_Este proyecto es un ejemplo educativo de DDD aplicado. Úsalo como referencia para aprender y mejorar tus habilidades en arquitectura de software._
+_Este proyecto es un ejemplo educativo de DDD Lite aplicado. Úsalo como punto de partida para aprender DDD sin la complejidad de los patrones avanzados._

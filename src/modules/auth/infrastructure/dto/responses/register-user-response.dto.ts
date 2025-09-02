@@ -1,4 +1,4 @@
 export interface RegisterUserResponseDto {
-	userId: string;
+	userId: number;
 	email: string;
 }

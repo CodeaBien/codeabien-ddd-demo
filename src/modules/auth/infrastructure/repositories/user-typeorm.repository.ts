@@ -17,27 +17,37 @@ export class TypeOrmUserRepository implements UserRepository {
 	) {}
 
 	async findUserByEmailAddress(emailAddress: string): Promise<UserAggregate | null> {
-		const userEntity = await this.userEntityRepository.findOne({
-			where: { email: emailAddress },
-		});
+		try {
+			const userEntity = await this.userEntityRepository.findOne({
+				where: { email: emailAddress },
+			});
 
-		if (!userEntity) {
+			if (!userEntity) {
+				return null;
+			}
+
+			return UserMapper.toDomain(userEntity);
+		} catch (error) {
+			console.error('Error finding user by email:', error);
 			return null;
 		}
-
-		return UserMapper.toDomain(userEntity);
 	}
 
-	async findUserById(userId: string): Promise<UserAggregate | null> {
-		const userEntity = await this.userEntityRepository.findOne({
-			where: { id: userId },
-		});
+	async findUserById(userId: number): Promise<UserAggregate | null> {
+		try {
+			const userEntity = await this.userEntityRepository.findOne({
+				where: { id: userId },
+			});
 
-		if (!userEntity) {
+			if (!userEntity) {
+				return null;
+			}
+
+			return UserMapper.toDomain(userEntity);
+		} catch (error) {
+			console.error('Error finding user by ID:', error);
 			return null;
 		}
-
-		return UserMapper.toDomain(userEntity);
 	}
 
 	async registerNewUser(userAggregate: UserAggregate): Promise<UserAggregate> {
